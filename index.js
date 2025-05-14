@@ -16,6 +16,14 @@ async function translateToIndonesian(text) {
   }
 }
 
+function formatTanggalIndo(day, month) {
+  const bulanIndo = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+  ];
+  return `${day} ${bulanIndo[month - 1]}`;
+}
+
 const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
@@ -62,7 +70,8 @@ async function getFaktaHariIni() {
 
       const translated = await translateToIndonesian(text);
 
-      return `📅 *Fakta sejarah (${day}/${month}):*\n🗓️ Tahun ${year}: ${translated}`;
+      const tanggalFormatted = formatTanggalIndo(day, month);
+      return `📅 *Fakta sejarah (${tanggalFormatted}):*\n🗓️ Tahun ${year}: ${translated}`;
     } else {
       return "Tidak ada fakta menarik untuk hari ini.";
     }
