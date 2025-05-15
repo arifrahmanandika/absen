@@ -1,11 +1,9 @@
-const { Client, LocalAuth } = require("whatsapp-web.js");
+const { Client, LocalAuth, Buttons } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
 const fs = require("fs"); // Import module untuk membaca file
 const OWNER_NUMBER = "6285369437000@c.us"; // Ganti dengan nomor owner kamu
-
 const { translate } = require("@vitalets/google-translate-api");
-const { get } = require("http");
-
+const { log } = require("console");
 async function translateToIndonesian(text) {
   try {
     const res = await translate(text, { to: "id" });
@@ -18,8 +16,18 @@ async function translateToIndonesian(text) {
 
 function formatTanggalIndo(day, month) {
   const bulanIndo = [
-    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    "Januari",
+    "Februari",
+    "Maret",
+    "April",
+    "Mei",
+    "Juni",
+    "Juli",
+    "Agustus",
+    "September",
+    "Oktober",
+    "November",
+    "Desember",
   ];
   return `${day} ${bulanIndo[month - 1]}`;
 }
@@ -27,7 +35,7 @@ function formatTanggalIndo(day, month) {
 const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
   },
 });
 
@@ -36,8 +44,12 @@ client.on("qr", (qr) => {
   console.log("Scan QR code dengan WhatsApp Anda");
 });
 
+client.on("loading_screen", (percent, message) => {
+  console.log(`Loading... ${percent}% ${message}`);
+});
+
 client.on("ready", () => {
-  console.log("Bot is ready!");
+  console.log("Oke Ready! Lest Party...");
 });
 
 async function getFaktaHariIni() {
@@ -60,7 +72,7 @@ async function getFaktaHariIni() {
       // Ambil yang paling "bermakna"
       const topEvent =
         sortedEvents.find((e) =>
-          /independence|war|president|treaty|revolution|freedom|united|europe|earthquake|disaster|first|launch/i.test(
+          /independence|war|president|treaty|revolution|freedom|earthquake|disaster|first/i.test(
             e.text
           )
         ) || sortedEvents[0]; // fallback ke pertama jika tidak ada cocok
@@ -136,31 +148,13 @@ async function getMotivasiToday() {
   }
 }
 
-/*
-async function getHeadlines() {
-  try {
-    const res = await fetch("https://api.viewbits.com/v1/headlines");
-    const data = await res.json();
-
-    if (!Array.isArray(data) || data.length === 0) {
-      return "Belum ada berita terbaru saat ini.";
-    }
-
-    // Ambil 5 berita teratas
-    const top = data.slice(0, 5);
-    const beritaList = top
-      .map((item, index) => `📰 *${index + 1}.* ${item.title}\n🔗 ${item.url}`)
-      .join("\n\n");
-
-    return `🗞️ *Headlines Hari Ini:*\n\n${beritaList}`;
-  } catch (err) {
-    console.error("Gagal ambil headlines:", err);
-    return "Gagal mengambil berita terbaru. Coba lagi nanti.";
-  }
-}
-*/
-
 client.on("message", async (msg) => {
+  const now = new Date();
+  const day = now.getDay(); // minggu = 0, senin = 1, selasa = 2, rabu = 3, kamis = 4, jumat = 5, sabtu = 6
+  const hour = now.getUTCHours() + 7; // Waktu Indonesia (WIB)
+
+  log("Message received:", msg.body);
+
   const text = msg.body.toLowerCase();
   const regex = /(\w+)[\s\/]?hadir[\s\/]?(\d+)/i;
 
@@ -172,9 +166,20 @@ client.on("message", async (msg) => {
     if (text.includes("anti hadir")) {
       const motivasiOnline = await getMotivasiToday();
       client.sendMessage(msg.from, motivasiOnline);
+    } else if (
+      (text.includes("bertha") || text.includes("winda")) &&
+      day === 1 &&
+      hour >= 6 &&
+      hour <= 10
+    ) {
+      client.sendMessage(
+        msg.from,
+        `Semangat Hari SENIN ${nama}! Jangan Lupa Hari ini Tarik data Barang untuk List Order yaa..`
+      );
     }
 
     if (jumlah === 30) {
+      msg.react("🎉");
       await msg.reply("cie ciee... wayae.. wayae..");
       const pesanOwner = `${nama} absensi 30, waktunya gajian`;
       client.sendMessage(OWNER_NUMBER, pesanOwner);
@@ -182,16 +187,17 @@ client.on("message", async (msg) => {
       const motivasi = await getMotivasi(); // Ambil motivasi acak dari file
       await msg.reply(`Cieee ${nama}, besok Gajian.\n💡 _${motivasi}_`);
     } else if (jumlah === 28) {
+      msg.react("🔥");
       await msg.reply("Yook Bisa yook... 2 hari lagi !!!");
     }
-  } else if (text.includes("dika hadir")) {
-    const fakta = await getFaktaHariIni();
-    await client.sendMessage(msg.from, fakta);
-    // const berita = await getHeadlines();
-    // client.sendMessage(msg.from, berita);
   } else if (text.includes("aji hadir")) {
     const motivasiOnline = await getMotivasiRandom();
     client.sendMessage(msg.from, motivasiOnline);
+  } else if (text.includes("lupa")) {
+    msg.react("🥴");
+    await msg.reply("Emmm Oke. Tapi jangan lupa Bersyukur yaa..");
+  } else if (text.includes("hadir") && hour >= 5 && hour <= 7) {
+    msg.react("👍");
   }
 });
 
